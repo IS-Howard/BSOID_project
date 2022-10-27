@@ -31,7 +31,7 @@ def bsoidfeat(filename, landmarknum, framerate, savename=None):
         joblib.dump(feats[0], savename)
     return feats[0]
 
-def embedfeat(feat, num_dimensions=None):
+def embedfeat(feat, num_dimensions=None, savename=None):
     if not num_dimensions:
         pca = PCA()
         pca.fit(feat)
@@ -39,6 +39,8 @@ def embedfeat(feat, num_dimensions=None):
     sampled_input_feats = feat[np.random.choice(feat.shape[0], feat.shape[0], replace=False)]
     learned_embeddings = umap.UMAP(n_neighbors=60, n_components=num_dimensions, min_dist=0.0, random_state=42).fit(sampled_input_feats)
     embeddings = learned_embeddings.embedding_
+    if savename:
+        joblib.dump(learned_embeddings, savename)
     return learned_embeddings, embeddings
 
 def motion_cluster(embeddings, min_c):
@@ -53,7 +55,7 @@ def motion_cluster(embeddings, min_c):
     print("motions num: ", len(np.unique(assignments)))
     return assignments
 
-def motion_clf(x, y, test_part=0.1, score=False):
+def motion_clf(x, y, test_part=0.1, score=False, savename=None):
     if test_part:
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1, random_state=42)
     else:
@@ -64,6 +66,8 @@ def motion_clf(x, y, test_part=0.1, score=False):
     clf.fit(x, y)
     if(score):
         print(cross_val_score(validate_clf, x_test, y_test, cv=5, n_jobs=-1))
+    if savename:
+        joblib.dump(clf, savename)
     return clf
 
 def motion_predict(feat, embeder, clf):
