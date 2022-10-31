@@ -164,17 +164,37 @@ def bsoid_extract(data, fps, frameshift=False):
     return f_10fps
 
 
-def bsoid_predict(feats, clf):
-    """
-    :param feats: list, multiple feats (original feature space)
-    :param clf: Obj, MLP classifier
-    :return nonfs_labels: list, label/100ms
-    """
-    labels_fslow = []
+def bsoid_predict(filename, landmarknum, framerate, clf, embeder=None):
+    '''
+    bsoid prediction (with frame shift)
+    input : DLC csv file, landmarknum, framerate, clf
+    output : frame labels
+    '''
+    pose_chosen = np.arange(landmarknum*3)
+    csv_raw = pd.read_csv(filename, low_memory=False)
+    csv_data, _ = adp_filt(csv_raw, pose_chosen)
+    feats = bsoid_extract([csv_data], framerate, True)
+    # frame shift labels
+    labels = []
     for i in range(0, len(feats)):
-        labels = clf.predict(feats[i])
-        labels_fslow.append(labels)
-    return labels_fslow
+        feat = feats[i]
+        if embeder:
+            feat = embeder.transform(feat)
+        labels.append(clf.predict(feat))
+    # labels from frame shift labels
+    labels_pad = -1 * np.ones([len(labels), len(max(labels, key=lambda x: len(x)))])
+    for n, l in enumerate(labels):
+        labels_pad[n][0:len(l)] = l
+        labels_pad[n] = labels_pad[n][::-1]
+        if n > 0:
+            labels_pad[n][0:n] = labels_pad[n - 1][0:n]
+    labels_fs = labels_pad.astype(int)
+    # flatten labels
+    labels_fs2 = []
+    for l in range(math.floor(framerate / 10)):
+        labels_fs2.append(labels_fs[l])
+    labels_fs2 = np.array(labels_fs2).flatten('F')
+    return labels_fs2
 
 
 def adp_filt(currdf: object, pose):
