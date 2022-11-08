@@ -11,25 +11,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.svm import SVC
 
-def confusion_matrix(predict, GT):
-    length = len(GT)
-    classes = len(np.unique(GT))
-    matrix = np.zeros((classes,classes))
-    for i in range(length):
-        matrix[int(predict[i])][int(GT[i])] += 1
-    for i in range(classes):
-        print(matrix[i])
-
-def bsoidfeat(filename, landmarknum, framerate, savename=None):
+def bsoidfeat(filename, landmarknum, framerate, savename=None, shift=False):
     #read csv
     pose_chosen = np.arange(landmarknum*3)
     csv_raw = pd.read_csv(filename, low_memory=False)
     csv_data, _ = adp_filt(csv_raw, pose_chosen)
     #extract feature from points
-    feats = bsoid_extract([csv_data], framerate)
+    feats = bsoid_extract([csv_data], framerate, shift)
     if savename:
-        joblib.dump(feats[0], savename)
-    return feats[0]
+        joblib.dump(np.concatenate(feats), savename)
+    return np.concatenate(feats)
 
 def embedfeat(feat, num_dimensions=None, savename=None):
     if not num_dimensions:
@@ -60,9 +51,9 @@ def motion_clf(x, y, test_part=0.1, score=False, savename=None):
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1, random_state=42)
     else:
         x_train, y_train = x, y
-    validate_clf = SVC(kernel='rbf', C=100)#RandomForestClassifier(random_state=0)
+    validate_clf = RandomForestClassifier(random_state=0)#SVC(kernel='rbf', C=100)
     validate_clf.fit(x_train, y_train)
-    clf = SVC(kernel='rbf', C=100)#RandomForestClassifier(random_state=42)
+    clf = RandomForestClassifier(random_state=42)#SVC(kernel='rbf', C=100)
     clf.fit(x, y)
     if(score):
         print(cross_val_score(validate_clf, x_test, y_test, cv=5, n_jobs=-1))
